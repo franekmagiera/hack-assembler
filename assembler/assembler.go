@@ -1,5 +1,10 @@
 package assembler
 
+import (
+	"bufio"
+	"io"
+)
+
 type SymbolTable struct {
 	nextAvailableAddress int
 	table                map[string]int
@@ -40,7 +45,16 @@ func (symbolTable *SymbolTable) assignNextAvailableAddress(symbol string) {
 	symbolTable.nextAvailableAddress += 1
 }
 
-func Assemble(input []string) ([]string, error) {
+func Assemble(input io.ReadSeeker) ([]string, error) {
+	lines := make([]string, 0)
+	scanner := bufio.NewScanner(input)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return assemble(lines)
+}
+
+func assemble(input []string) ([]string, error) {
 	symbolTable := newSymbolTable()
 
 	romAddress := 0

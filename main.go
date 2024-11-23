@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,34 +31,26 @@ func main() {
 			fmt.Fprintln(os.Stderr, err.Error())
 		}
 	}()
-	// Just storing the whole file in memory for simplicity.
-	scanner := bufio.NewScanner(file)
-	lines := make([]string, 0)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "error reading file: ", err)
+	machineCode, err := assembler.Assemble(file)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
-	machineCode, err := assembler.Assemble(lines)
-	if err == nil {
-		dir := filepath.Dir(path)
-		filename := filepath.Base(path)
-		filename = filename[:strings.Index(filename, ".")]
-		outputFile, err := os.Create(fmt.Sprintf("%s/%s.hack", dir, filename))
-		if err != nil {
+	dir := filepath.Dir(path)
+	filename := filepath.Base(path)
+	filename = filename[:strings.Index(filename, ".")]
+	outputFile, err := os.Create(fmt.Sprintf("%s/%s.hack", dir, filename))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return
+	}
+	defer func() {
+		if err := outputFile.Close(); err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
-			return
 		}
-		defer func() {
-			if err := outputFile.Close(); err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
-			}
-		}()
+	}()
 
-		for _, code := range machineCode {
-			outputFile.WriteString(fmt.Sprintln(code))
-		}
+	for _, code := range machineCode {
+		outputFile.WriteString(fmt.Sprintln(code))
 	}
 }
