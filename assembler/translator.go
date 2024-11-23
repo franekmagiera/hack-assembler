@@ -8,7 +8,7 @@ import (
 // Translates the command to the machine code.
 // Ignores L_COMMANDs returning empty string and nil error.
 // Can modify the symbolTable when a new symbol is defined as a part of an A_COMMAND.
-func processCommand(command Command, lineNumber int, symbolTable map[string]int) (string, error) {
+func processCommand(command Command, lineNumber int, symbolTable *SymbolTable) (string, error) {
 	switch command := command.(type) {
 	case *LCommand:
 		// Ignore the L_COMMAND.
@@ -35,12 +35,10 @@ func processCommand(command Command, lineNumber int, symbolTable map[string]int)
 			}
 			return fmt.Sprintf("0%015b", num), nil
 		}
-		value, ok := symbolTable[command.symbol]
+		value, ok := symbolTable.table[command.symbol]
 		if !ok {
-			nextAvailableAddress := symbolTable["NEXT_AVAILABLE_ADDRESS"]
-			symbolTable[command.symbol] = nextAvailableAddress
-			symbolTable["NEXT_AVAILABLE_ADDRESS"] += 1
-			return fmt.Sprintf("0%015b", symbolTable[command.symbol]), nil
+			symbolTable.assignNextAvailableAddress(command.symbol)
+			return fmt.Sprintf("0%015b", symbolTable.table[command.symbol]), nil
 		}
 		return fmt.Sprintf("0%015b", value), nil
 	}

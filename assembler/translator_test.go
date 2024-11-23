@@ -16,7 +16,7 @@ func TestUnknownValues(t *testing.T) {
 		{&CCommand{"", "0", "JUMP"}, fmt.Sprintf("unknown value for jump: JUMP at line: %d", lineNumber)},
 	}
 	for _, test := range tests {
-		result, err := processCommand(test.command, lineNumber, make(map[string]int))
+		result, err := processCommand(test.command, lineNumber, newSymbolTable())
 		if result != "" {
 			t.Fatalf("expected empty result, got: %s", result)
 		}
@@ -31,7 +31,7 @@ func TestUnknownValues(t *testing.T) {
 
 func TestTooBigNumberInACommand(t *testing.T) {
 	lineNumber := 1
-	result, err := processCommand(&ACommand{"32768"}, lineNumber, make(map[string]int))
+	result, err := processCommand(&ACommand{"32768"}, lineNumber, newSymbolTable())
 	if result != "" {
 		t.Fatalf("expected empty result, got: %s", result)
 	}
@@ -46,7 +46,7 @@ func TestTooBigNumberInACommand(t *testing.T) {
 
 func TestIgnoreLCommand(t *testing.T) {
 	lineNumber := 1
-	result, err := processCommand(&LCommand{"LOOP"}, lineNumber, make(map[string]int))
+	result, err := processCommand(&LCommand{"LOOP"}, lineNumber, newSymbolTable())
 	if err != nil {
 		t.Fatalf("expected nil error, got: %s", err.Error())
 	}
