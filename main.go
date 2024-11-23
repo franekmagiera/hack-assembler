@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,11 +32,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err.Error())
 		}
 	}()
-	machineCode, err := assembler.Assemble(file)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		return
-	}
+	machineCodeReader := assembler.Assemble(file)
 	dir := filepath.Dir(path)
 	filename := filepath.Base(path)
 	filename = filename[:strings.Index(filename, ".")]
@@ -49,8 +46,13 @@ func main() {
 			fmt.Fprintln(os.Stderr, err.Error())
 		}
 	}()
-
-	for _, code := range machineCode {
-		outputFile.WriteString(fmt.Sprintln(code))
+	machineCodeScanner := bufio.NewScanner(machineCodeReader)
+	machineCodeScanner.Split(bufio.ScanBytes)
+	for machineCodeScanner.Scan() {
+		outputFile.Write(machineCodeScanner.Bytes())
+	}
+	if machineCodeScanner.Err() != nil {
+		outputFile.Truncate(0)
+		fmt.Fprintln(os.Stderr, machineCodeScanner.Err())
 	}
 }

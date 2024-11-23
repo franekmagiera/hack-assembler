@@ -3,6 +3,7 @@ package assembler
 import (
 	"bufio"
 	"io"
+	"strings"
 )
 
 type SymbolTable struct {
@@ -45,13 +46,14 @@ func (symbolTable *SymbolTable) assignNextAvailableAddress(symbol string) {
 	symbolTable.nextAvailableAddress += 1
 }
 
-func Assemble(input io.ReadSeeker) ([]string, error) {
+func Assemble(input io.ReadSeeker) io.Reader {
 	lines := make([]string, 0)
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
-	return assemble(lines)
+	output, _ := assemble(lines)
+	return strings.NewReader(strings.Join(output, "\n"))
 }
 
 func assemble(input []string) ([]string, error) {
