@@ -110,10 +110,7 @@ func compare(reader io.Reader, expectedReader io.Reader) error {
 		if err2 != nil && err2 != io.EOF {
 			return err2
 		}
-		if bytesRead != expectedBytesRead {
-			return errors.New("output of a different size than expected")
-		}
-		if !bytes.Equal(outputBytes, expectedBytes) {
+		if !bytes.Equal(outputBytes[:bytesRead], expectedBytes[:expectedBytesRead]) {
 			return errors.New("unexpected output")
 		}
 		if (err1 == io.EOF) && (err2 == io.EOF) {
