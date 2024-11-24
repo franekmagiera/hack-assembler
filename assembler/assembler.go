@@ -3,7 +3,6 @@ package assembler
 import (
 	"bufio"
 	"io"
-	"strings"
 )
 
 type SymbolTable struct {
@@ -46,24 +45,66 @@ func (symbolTable *SymbolTable) assignNextAvailableAddress(symbol string) {
 	symbolTable.nextAvailableAddress += 1
 }
 
-func Assemble(input io.ReadSeeker) io.Reader {
-	lines := make([]string, 0)
-	scanner := bufio.NewScanner(input)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	output, _ := assemble(lines)
-	return strings.NewReader(strings.Join(output, "\n"))
+type MachineCodeProvider struct {
+	input           *bufio.Scanner
+	inputLineNumber int
+	symbolTable     *SymbolTable
 }
 
-func assemble(input []string) ([]string, error) {
-	symbolTable := newSymbolTable()
+func (machineCodeProvider *MachineCodeProvider) NextLine() (string, error) {
+	line := machineCodeProvider.input.Text()
+	command, err := parseLine(line, machineCodeProvider.inputLineNumber)
+	if command == nil && err == nil {
+		if machineCodeProvider.ScanNextLine() {
+			return machineCodeProvider.NextLine()
+		} else {
+			return "", nil
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+	machineCode, err := processCommand(
+		command,
+		machineCodeProvider.inputLineNumber,
+		machineCodeProvider.symbolTable,
+	)
+	if machineCode == "" && err == nil {
+		if machineCodeProvider.ScanNextLine() {
+			return machineCodeProvider.NextLine()
+		} else {
+			return "", nil
+		}
+	}
+	if err != nil {
+		return "", err
+	}
+	return machineCode, nil
+}
 
+func (machineCodeProvider *MachineCodeProvider) ScanNextLine() bool {
+	machineCodeProvider.inputLineNumber += 1
+	return machineCodeProvider.input.Scan()
+}
+
+func Assemble(input io.ReadSeeker) (*MachineCodeProvider, error) {
+	symbolTable := newSymbolTable()
+	if err := updateSymbolTable(input, symbolTable); err != nil {
+		return nil, err
+	}
+	input.Seek(0, io.SeekStart)
+	inputScanner := bufio.NewScanner(input)
+	return &MachineCodeProvider{inputScanner, 0, symbolTable}, nil
+}
+
+func updateSymbolTable(input io.Reader, symbolTable *SymbolTable) error {
 	romAddress := 0
-	for lineNumber, line := range input {
-		command, err := parseLine(line, lineNumber)
+	inputScanner := bufio.NewScanner(input)
+	lineNumber := 0
+	for inputScanner.Scan() {
+		command, err := parseLine(inputScanner.Text(), lineNumber)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if command == nil {
 			continue
@@ -74,25 +115,7 @@ func assemble(input []string) ([]string, error) {
 		case *LCommand:
 			symbolTable.table[command.symbol] = romAddress
 		}
+		lineNumber += 1
 	}
-
-	output := make([]string, 0, len(input))
-	for lineNumber, line := range input {
-		command, err := parseLine(line, lineNumber)
-		if command == nil && err == nil {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		machineCode, err := processCommand(command, lineNumber, symbolTable)
-		if machineCode == "" && err == nil {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		output = append(output, machineCode)
-	}
-	return output, nil
+	return nil
 }

@@ -1,9 +1,7 @@
 package assembler
 
 import (
-	"bytes"
-	"errors"
-	"io"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -17,16 +15,25 @@ func TestAddProgram(t *testing.T) {
 		@0
 		M=D
 		`
-	output := Assemble(strings.NewReader(input))
+	machineCodeProvider, err := Assemble(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
 	expectedOutput :=
 		`0000000000000010
 1110110000010000
 0000000000000011
 1110000010010000
 0000000000000000
-1110001100001000`
-	if err := compare(output, strings.NewReader(expectedOutput)); err != nil {
+1110001100001000
+
+`
+	output, err := collectOutput(machineCodeProvider)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if output != expectedOutput {
+		t.Fatal("unexpected output", "\n", output, "\n", expectedOutput)
 	}
 }
 
@@ -65,7 +72,10 @@ func TestRectProgram(t *testing.T) {
 		@END
 		0;JMP
 	`
-	output := Assemble(strings.NewReader(input))
+	machineCodeProvider, err := Assemble(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
 	expectedOutput :=
 		`0000000000000000
 1111110000010000
@@ -91,30 +101,26 @@ func TestRectProgram(t *testing.T) {
 0000000000001010
 1110001100000001
 0000000000010111
-1110101010000111`
+1110101010000111
 
-	if err := compare(output, strings.NewReader(expectedOutput)); err != nil {
+`
+	output, err := collectOutput(machineCodeProvider)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if output != expectedOutput {
+		t.Fatal("unexpected output", "\n", output, "\n", expectedOutput)
 	}
 }
 
-func compare(reader io.Reader, expectedReader io.Reader) error {
-	outputBytes := make([]byte, 1024)
-	expectedBytes := make([]byte, 1024)
-	for {
-		bytesRead, err1 := reader.Read(outputBytes)
-		expectedBytesRead, err2 := expectedReader.Read(expectedBytes)
-		if err1 != nil && err1 != io.EOF {
-			return err1
+func collectOutput(machineCodeProvider *MachineCodeProvider) (string, error) {
+	var b strings.Builder
+	for machineCodeProvider.ScanNextLine() {
+		line, err := machineCodeProvider.NextLine()
+		if err != nil {
+			return "", err
 		}
-		if err2 != nil && err2 != io.EOF {
-			return err2
-		}
-		if !bytes.Equal(outputBytes[:bytesRead], expectedBytes[:expectedBytesRead]) {
-			return errors.New("unexpected output")
-		}
-		if (err1 == io.EOF) && (err2 == io.EOF) {
-			return nil
-		}
+		b.WriteString(fmt.Sprintf("%s\n", line))
 	}
+	return b.String(), nil
 }
